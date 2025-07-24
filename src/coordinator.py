@@ -47,7 +47,7 @@ class CoordinatorAgent:
         self.num_results = num_results
         self.search_agent = SearchAgent(num_results=num_results * 2)
         self.summarizer = SummarizerAgent(hf_model="meta-llama/Llama-3.1-8B-Instruct:novita")
-        self.verifier = VerifierAgent(max_months_old=max_months_old)
+        self.verifier = VerifierAgent(max_months_old=max_months_old, blacklist_domains=["youtube.com", "reddit.com"])
 
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -58,11 +58,18 @@ class CoordinatorAgent:
 
 
     def run(self, query: str):
-        # 1. Search
+
+        #1 Refine query
+        if len(query.strip()) > 50:
+            logger.info(f"Refining query: {query}")
+            query = self.summarizer.hf_prompt_refine(query)
+
+
+        # 2. Search
         logger.info(f"Starting pipeline run for query: '{query}'")
         raw_results = self.search_agent.search(query)
 
-        # 2. Summarize & 3. Verify
+        # 3. Summarize & 4. Verify
         final_results = []
         for entry in raw_results:
             if entry['source'] in self.memory:
@@ -94,7 +101,7 @@ class CoordinatorAgent:
                 logger.error(f"Guardrail validation failed for entry {entry['title']}: {ve}")
                 continue
 
-        # 4. Export
+        # 5. Export
         logger.info(f"Exporting {len(final_results)} valid results to JSON.")
         self.export_json(final_results[:self.num_results])
         return final_results[:self.num_results]

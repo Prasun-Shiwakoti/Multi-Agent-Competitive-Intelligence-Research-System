@@ -57,6 +57,27 @@ class SummarizerAgent:
 
         return result['choices'][0]['message'].get('content', '').strip()
 
+    def hf_prompt_refine(self, query: str) -> str:
+        """
+        Refines the user query to make it more suitable for search.
+        """
+        refine_payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"Refine this query for better search results: {query}"
+                }
+            ],
+            "model": self.hf_model
+        }
+
+        response = requests.post(self.api_url, headers=self.headers, json=refine_payload, timeout=30)
+    
+        response.raise_for_status()
+        result = response.json()
+
+        return result['choices'][0]['message'].get('content', '').strip()
+
     def hf_article_summarize(self, text: str) -> str:
 
         article_summarizing_payload = {
