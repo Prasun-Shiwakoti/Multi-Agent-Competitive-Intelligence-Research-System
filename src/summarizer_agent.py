@@ -36,13 +36,14 @@ class SummarizerAgent:
                 {
                     "role": "user",
                     "content": f"""
-                                You need to find out the main subject of a prompt. You dont need to answer just find out the subject.
+                                You need to find out the main subject of a prompt. You dont need to answer the prompt. Just find out the main subject and fill the 'subject' field only.
                                 Example: 
                                     Prompt: Notion AI new features 2025
                                     Response: Notion AI
                                 
+                                User: 
                                 Prompt: {title}
-                                Response: 
+                                Response: <subject>
                             """,
                 }
             ],
@@ -62,7 +63,10 @@ class SummarizerAgent:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a news summarization assistant. Summarize the following article concisely in a few words. Example: New meeting summary feature added"
+                    "content": """You are a article summarization assistant. Summarize the following article concisely in a few words. If no text is provided respond with empty string ' '. 
+                    Example: New meeting summary feature added.
+
+                    """
                 },
                 {
                     "role": "user",
@@ -80,19 +84,21 @@ class SummarizerAgent:
         return result['choices'][0]['message'].get('content', '').strip()
 
     def summarize(self, entry: dict) -> dict:
-        context = entry.get('snippet', 'No description available')
+        context = entry.get('description', 'No description available')
         title = entry.get('title', 'No title available')
-        full_text = self.fetch_full_text(entry.get('link', ''))
+        source = entry.get('source', 'No source available')
+        full_text = self.fetch_full_text(source)
+        
         if full_text:
             context = full_text
 
-        title = self.hf_title_summarize(title)
+        product = self.hf_title_summarize(title)
         summary = self.hf_article_summarize(context)
 
         return {
-            "product": title,
+            "product": product,
             "update": summary,
-            "source": entry.get('link'),
+            "source": source,
             "date": entry.get('date')
         }
 

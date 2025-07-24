@@ -1,6 +1,7 @@
 import tldextract
 from datetime import datetime
 from dateutil import parser
+import re
 
 class VerifierAgent:
     """
@@ -21,6 +22,18 @@ class VerifierAgent:
     def get_domain(self, url: str) -> str:
         ext = tldextract.extract(url)
         return f"{ext.domain}.{ext.suffix}"
+    
+    def parse_text(self, text: str) -> bool:
+        """
+        Extracts the main content from the text, if available.
+        """
+        # Remove non-alphanumeric characters
+        main_content = re.sub(r'[^\w\s]', '', text)
+
+        if not main_content.strip():
+            return False
+
+        return True
 
     def verify(self, entry: dict) -> tuple[bool, str]:
         """
@@ -28,19 +41,20 @@ class VerifierAgent:
         """
         # Check update presence
         update = entry.get('update', '').strip()
-        if not update:
+        update_verify = self.parse_text(update)
+        if not update_verify:
             return False, "Empty update text"
 
         # Domain check
-        domain = self.get_domain(entry.get('source', ''))
+        domain = self.get_domain(entry.get('link', ''))
         if domain in self.blacklist_domains:
             return False, f"Blacklisted domain: {domain}"
 
         # Date check
-        date_str = entry.get('date')
+        date_str = entry.get('date', None)
         dt = self.parse_date(date_str) if date_str else None
         if not dt:
-            return False, "Unparsable date"
+            return True, "Unparsable date"
 
         # Check recency
         now = datetime.now()
